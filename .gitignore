@@ -1,0 +1,37 @@
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Ignore virtual environment
+venv/
+.env
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore editor settings (optional)
+.vscode/
+.idea/
+
+# Ignore Streamlit logs and config
+.streamlit/config.toml
+.streamlit/credentials.toml
+
+# Ignore environment & secret files
+.env
+credentials.json
+
+# Ignore build/deployment
+*.log
+*.bak
+*.swp
+*.tmp
+
+# Ignore frontend __pycache__ if any
+frontend/__pycache__/
+backend/__pycache__/
+calendar/__pycache__/
