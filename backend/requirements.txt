@@ -1,7 +1,10 @@
 fastapi
 uvicorn
 langchain
-huggingface_hub
+langchain-community
+langchain-openai
 python-dotenv
 google-api-python-client
-langchain-community
+python-dateutil
+dateparser
+pydantic

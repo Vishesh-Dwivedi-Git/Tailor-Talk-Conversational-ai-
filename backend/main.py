@@ -2,12 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain.agents import initialize_agent, AgentType
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.tools import tool
 import dateparser
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+from dateutil.parser import parse
 
 # Load environment variables
 load_dotenv()
@@ -31,19 +32,54 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
 
+from datetime import datetime, timedelta
+import dateparser
 
 def safe_parse_date(raw: str) -> str:
-    """Parses human input like '6 July' and returns 'YYYY-MM-DD' using current year if needed."""
-    # Append current year if user didn’t give one
-    current_year = datetime.now().year
-    if not any(char.isdigit() and len(char) == 4 for char in raw):  # no full year in input
-        raw += f" {current_year}"
+    """
+    Parses human-readable date strings (e.g., 'tomorrow', '6 July') into ISO format.
+    Handles keywords like 'tomorrow', 'lunch', 'dinner', and appends year 2025 if not provided.
+    Returns: ISO 8601 datetime string (YYYY-MM-DDTHH:MM:SS)
+    """
+    raw = raw.lower().strip()
 
-    dt = dateparser.parse(raw)
+    # Handle time-related keywords
+    time_keywords = {
+        "morning": "9 AM",
+        "afternoon": "2 PM",
+        "evening": "6 PM",
+        "lunch": "1 PM",
+        "dinner": "8 PM",
+        "tonight": "9 PM",
+    }
+
+    for keyword, replacement in time_keywords.items():
+        if keyword in raw:
+            raw = raw.replace(keyword, replacement)
+
+    # Handle "tomorrow", "today", "yesterday" manually for context
+    today = datetime.now()
+
+    if "tomorrow" in raw:
+        date = today + timedelta(days=1)
+        raw = raw.replace("tomorrow", date.strftime("%d %B"))
+    elif "today" in raw:
+        raw = raw.replace("today", today.strftime("%d %B"))
+    elif "yesterday" in raw:
+        date = today - timedelta(days=1)
+        raw = raw.replace("yesterday", date.strftime("%d %B"))
+
+    # Append 2025 if no 4-digit year is found
+    if not any(len(token) == 4 and token.isdigit() for token in raw.split()):
+        raw += " 2025"
+
+    dt = dateparser.parse(raw, settings={"PREFER_DATES_FROM": "future"})
+
     if not dt:
-        raise ValueError(f"Invalid date format: '{raw}'")
+        raise ValueError(f"❌ Could not parse date string: '{raw}'")
 
-    return dt.strftime("%Y-%m-%d")  # ✅ returns ISO string
+    return dt.strftime("%Y-%m-%dT%H:%M:%S")
+
 
 # Tool: Check calendar
 @tool(description="Check availability, returns busy slots for a given date.")
@@ -60,9 +96,23 @@ def check_calendar(date: str) -> str:
 # Tool: Book meeting
 @tool(description="Book a meeting using title, start, and end time.")
 def book_meeting(title: str, start: str, end: str) -> str:
-    print(f"📅 Tool: book_meeting called with title='{title}', start='{start}', end='{end}'")
-    result = book_event(title, start, end)
-    return result if result else "❌ Failed to book the event."
+    """
+    Books a calendar event with ISO 8601-compliant timestamps.
+    Accepts human-readable times (e.g., '8 July 2024 9 PM')
+    """
+    try:
+        # Parse and convert to ISO 8601 with timezone
+        start_dt = parse(start)
+        end_dt = parse(end)
+
+        start_iso = start_dt.isoformat()
+        end_iso = end_dt.isoformat()
+
+        print(f"📅 Booking: {title} | {start_iso} → {end_iso}")
+        return book_event(title, start_iso, end_iso)
+
+    except Exception as e:
+        return f"❌ Failed to parse time or book event: {str(e)}"
 
 
 # Tool: Suggest free slots
