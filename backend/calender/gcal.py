@@ -1,4 +1,5 @@
 
+import base64
 import json
 import datetime
 from google.oauth2 import service_account
@@ -12,20 +13,26 @@ load_dotenv()
 import os
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_CREDENTIALS_JSON")
+encoded = os.getenv("GOOGLE_CREDENTIALS_BASE64")
 CALENDAR_ID = os.getenv("CALENDAR_ID")
 
+
 def build_service():
-    if not SERVICE_ACCOUNT_FILE:
-        raise ValueError("❌ GOOGLE_CREDENTIALS_JSON not found in environment.")
-    with open(SERVICE_ACCOUNT_FILE, 'r') as f:
-        creds_dict = json.load(f)
+    if not encoded:
+        raise ValueError("❌ GOOGLE_CREDENTIALS_BASE64 not set")
+
+    try:
+        decoded = base64.b64decode(encoded)
+        creds_dict = json.loads(decoded)
+    except Exception as e:
+        raise ValueError(f"❌ Failed to decode credentials: {e}")
+
     credentials = service_account.Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     return build('calendar', 'v3', credentials=credentials)
 
 # 🔧 This is your shared object
 service = build_service()
-print("GOOGLE_CREDENTIALS_JSON:", SERVICE_ACCOUNT_FILE)
+print("GOOGLE_CREDENTIALS_JSON:", encoded)
 
 # 🕓 Function 1: Check availability
 def check_availability(date_str: str):
