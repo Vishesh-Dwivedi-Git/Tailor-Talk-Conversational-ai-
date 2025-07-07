@@ -23,7 +23,7 @@ Thumbs.db
 
 # Ignore environment & secret files
 .env
-credentials.json
+backend/credentials.json
 
 # Ignore build/deployment
 *.log

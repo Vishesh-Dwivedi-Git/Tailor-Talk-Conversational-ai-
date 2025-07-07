@@ -140,7 +140,6 @@ if user_input:
             response = requests.post(
                 "http://localhost:8000/chat",  # Change this when deploying
                 json={"message": user_input},
-                timeout=5
             )
             bot_reply = response.json().get("response", "Sorry, I didn't understand.")
         except requests.RequestException:
