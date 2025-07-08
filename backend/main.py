@@ -37,13 +37,21 @@ import dateparser
 
 def safe_parse_date(raw: str) -> str:
     """
-    Parses human-readable date strings (e.g., 'tomorrow', '6 July') into ISO format.
-    Handles keywords like 'tomorrow', 'lunch', 'dinner', and appends year 2025 if not provided.
-    Returns: ISO 8601 datetime string (YYYY-MM-DDTHH:MM:SS)
+    Parses human-readable date strings into future-safe ISO format.
+    Ensures result is not in the past and prefers current/next year.
     """
     raw = raw.lower().strip()
+    now = datetime.now()
 
-    # Handle time-related keywords
+    # Handle day keywords first
+    if "tomorrow" in raw:
+        raw = raw.replace("tomorrow", (now + timedelta(days=1)).strftime("%d %B %Y"))
+    elif "today" in raw:
+        raw = raw.replace("today", now.strftime("%d %B %Y"))
+    elif "yesterday" in raw:
+        raw = raw.replace("yesterday", (now - timedelta(days=1)).strftime("%d %B %Y"))
+
+    # Time of day keywords
     time_keywords = {
         "morning": "9 AM",
         "afternoon": "2 PM",
@@ -57,26 +65,23 @@ def safe_parse_date(raw: str) -> str:
         if keyword in raw:
             raw = raw.replace(keyword, replacement)
 
-    # Handle "tomorrow", "today", "yesterday" manually for context
-    today = datetime.now()
-
-    if "tomorrow" in raw:
-        date = today + timedelta(days=1)
-        raw = raw.replace("tomorrow", date.strftime("%d %B"))
-    elif "today" in raw:
-        raw = raw.replace("today", today.strftime("%d %B"))
-    elif "yesterday" in raw:
-        date = today - timedelta(days=1)
-        raw = raw.replace("yesterday", date.strftime("%d %B"))
-
-    # Append 2025 if no 4-digit year is found
+    # If no 4-digit year is present, append current year
     if not any(len(token) == 4 and token.isdigit() for token in raw.split()):
-        raw += " 2025"
+        raw += f" {now.year}"
 
+    # Parse using dateparser
     dt = dateparser.parse(raw, settings={"PREFER_DATES_FROM": "future"})
-
     if not dt:
         raise ValueError(f"❌ Could not parse date string: '{raw}'")
+
+    # If parsed date is still in the past, shift to next year
+    if dt < now:
+        try_next_year = dateparser.parse(
+            raw.replace(str(now.year), str(now.year + 1)),
+            settings={"PREFER_DATES_FROM": "future"}
+        )
+        if try_next_year and try_next_year > now:
+            dt = try_next_year
 
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
