@@ -9,7 +9,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 from dateutil.parser import parse
-
+import re
 # Load environment variables
 load_dotenv()
 
@@ -36,22 +36,26 @@ from datetime import datetime, timedelta
 import dateparser
 
 def safe_parse_date(raw: str) -> str:
-    """
-    Parses human-readable date strings into ISO format.
-    Handles 'tomorrow', 'today', 'lunch', etc. Appends year 2025 if needed.
-    """
-    raw = raw.lower().strip()
-    today = datetime.now()
+    raw = raw.strip().lower()
+    now = datetime.now()
 
-    # Handle relative day keywords
+    # ✅ Accept ISO date directly: '2024-07-19'
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        try:
+            dt = datetime.strptime(raw, "%Y-%m-%d")
+            return dt.strftime("%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            raise ValueError(f"Invalid ISO format: '{raw}'")
+
+    # Handle keywords
     if "tomorrow" in raw:
-        raw = raw.replace("tomorrow", (today + timedelta(days=1)).strftime("%d %B %Y"))
+        raw = raw.replace("tomorrow", (now + timedelta(days=1)).strftime("%d %B %Y"))
     elif "today" in raw:
-        raw = raw.replace("today", today.strftime("%d %B %Y"))
+        raw = raw.replace("today", now.strftime("%d %B %Y"))
     elif "yesterday" in raw:
-        raw = raw.replace("yesterday", (today - timedelta(days=1)).strftime("%d %B %Y"))
+        raw = raw.replace("yesterday", (now - timedelta(days=1)).strftime("%d %B %Y"))
 
-    # Handle time-related keywords
+    # Time context
     time_keywords = {
         "morning": "9 AM",
         "afternoon": "2 PM",
@@ -60,19 +64,26 @@ def safe_parse_date(raw: str) -> str:
         "dinner": "8 PM",
         "tonight": "9 PM",
     }
-
     for keyword, replacement in time_keywords.items():
         if keyword in raw:
             raw = raw.replace(keyword, replacement)
 
-    # Append 2025 if no year provided
+    # Append current year if not present
     if not any(len(token) == 4 and token.isdigit() for token in raw.split()):
-        raw += " 2025"
+        raw += f" {now.year}"
 
-    # Parse the final string
     dt = dateparser.parse(raw, settings={"PREFER_DATES_FROM": "future"})
     if not dt:
         raise ValueError(f"❌ Could not parse date string: '{raw}'")
+
+    # 🔄 Shift to next year if it's in the past
+    if dt < now:
+        try_next_year = dateparser.parse(
+            raw.replace(str(now.year), str(now.year + 1)),
+            settings={"PREFER_DATES_FROM": "future"}
+        )
+        if try_next_year and try_next_year > now:
+            dt = try_next_year
 
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
