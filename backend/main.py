@@ -37,21 +37,21 @@ import dateparser
 
 def safe_parse_date(raw: str) -> str:
     """
-    Parses human-readable date strings into future-safe ISO format.
-    Ensures result is not in the past and prefers current/next year.
+    Parses human-readable date strings into ISO format.
+    Handles 'tomorrow', 'today', 'lunch', etc. Appends year 2025 if needed.
     """
     raw = raw.lower().strip()
-    now = datetime.now()
+    today = datetime.now()
 
-    # Handle day keywords first
+    # Handle relative day keywords
     if "tomorrow" in raw:
-        raw = raw.replace("tomorrow", (now + timedelta(days=1)).strftime("%d %B %Y"))
+        raw = raw.replace("tomorrow", (today + timedelta(days=1)).strftime("%d %B %Y"))
     elif "today" in raw:
-        raw = raw.replace("today", now.strftime("%d %B %Y"))
+        raw = raw.replace("today", today.strftime("%d %B %Y"))
     elif "yesterday" in raw:
-        raw = raw.replace("yesterday", (now - timedelta(days=1)).strftime("%d %B %Y"))
+        raw = raw.replace("yesterday", (today - timedelta(days=1)).strftime("%d %B %Y"))
 
-    # Time of day keywords
+    # Handle time-related keywords
     time_keywords = {
         "morning": "9 AM",
         "afternoon": "2 PM",
@@ -65,23 +65,14 @@ def safe_parse_date(raw: str) -> str:
         if keyword in raw:
             raw = raw.replace(keyword, replacement)
 
-    # If no 4-digit year is present, append current year
+    # Append 2025 if no year provided
     if not any(len(token) == 4 and token.isdigit() for token in raw.split()):
-        raw += f" {now.year}"
+        raw += " 2025"
 
-    # Parse using dateparser
+    # Parse the final string
     dt = dateparser.parse(raw, settings={"PREFER_DATES_FROM": "future"})
     if not dt:
         raise ValueError(f"❌ Could not parse date string: '{raw}'")
-
-    # If parsed date is still in the past, shift to next year
-    if dt < now:
-        try_next_year = dateparser.parse(
-            raw.replace(str(now.year), str(now.year + 1)),
-            settings={"PREFER_DATES_FROM": "future"}
-        )
-        if try_next_year and try_next_year > now:
-            dt = try_next_year
 
     return dt.strftime("%Y-%m-%dT%H:%M:%S")
 
