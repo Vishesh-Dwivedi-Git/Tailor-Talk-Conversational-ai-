@@ -13,9 +13,10 @@ load_dotenv()
 import os
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-encoded = os.getenv("GOOGLE_CREDENTIALS_BASE64")
+encoded = os.getenv("GOOGLE_CREDENTIALS_JSON")
 CALENDAR_ID = os.getenv("CALENDAR_ID")
 
+print("base64 json is ",encoded)
 
 def build_service():
     if not encoded:
@@ -32,7 +33,6 @@ def build_service():
 
 # 🔧 This is your shared object
 service = build_service()
-print("GOOGLE_CREDENTIALS_JSON:", encoded)
 
 # 🕓 Function 1: Check availability
 def check_availability(date_str: str):
