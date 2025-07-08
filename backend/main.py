@@ -14,7 +14,7 @@ from dateutil.parser import parse
 load_dotenv()
 
 # Import your calendar functions
-from backend.calender.gcal import check_availability, book_event, get_free_slots
+from calender.gcal import check_availability, book_event, get_free_slots
 
 # Setup FastAPI
 app = FastAPI()
