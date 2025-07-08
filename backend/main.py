@@ -22,7 +22,7 @@ app = FastAPI()
 # CORS to allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501"],
+    allow_origins=["https://calender0talk.streamlit.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
