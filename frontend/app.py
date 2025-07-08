@@ -138,7 +138,7 @@ if user_input:
         time.sleep(1.2)
         try:
             response = requests.post(
-                "http://localhost:8000/chat",  # Change this when deploying
+                "tailor-talk-conversational-ai-production.up.railway.app/chat",  # Change this when deploying
                 json={"message": user_input},
             )
             bot_reply = response.json().get("response", "Sorry, I didn't understand.")
